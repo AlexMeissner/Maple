@@ -1,10 +1,15 @@
 using Maple.Components;
+using Maple.Database;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+var connectionString = builder.Configuration.GetConnectionString("PostgresDb");
+builder.Services.AddDbContext<MapleDatabaseContext>(options => options.UseNpgsql(connectionString));
 
 var app = builder.Build();
 
