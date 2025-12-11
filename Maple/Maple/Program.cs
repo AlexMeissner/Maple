@@ -13,6 +13,11 @@ builder.Services.AddDbContext<MapleDatabaseContext>(options => options.UseNpgsql
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    scope.ServiceProvider.GetRequiredService<MapleDatabaseContext>().Database.Migrate();
+}
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
