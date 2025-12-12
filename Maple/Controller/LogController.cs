@@ -19,7 +19,7 @@ public class LogController(MapleDatabaseContext dbContext) : ControllerBase
 
         var entry = logs.Select(l => new LogEntry
         {
-            Timestamp = DateTime.UtcNow,
+            Timestamp = l.TimeStamp.UtcDateTime,
             Level = l.Level,
             Properties = l.Properties
         }).ToList();
