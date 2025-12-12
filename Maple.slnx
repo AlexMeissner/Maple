@@ -2,4 +2,5 @@
   <Project Path="DataTransfer/DataTransfer.csproj" Id="d4f8a044-e449-4622-8e25-d3a36ba9d88e" />
   <Project Path="Maple/Maple.csproj" />
   <Project Path="MapleSink/MapleSink.csproj" />
+  <Project Path="TestConsoleApp/TestConsoleApp.csproj" Id="66f7ab68-986a-4e5e-9d1a-e8cb35b1802e" />
 </Solution>

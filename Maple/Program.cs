@@ -1,6 +1,7 @@
 using Maple.Components;
 using Maple.Database;
 using Microsoft.EntityFrameworkCore;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,7 +10,10 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 var connectionString = builder.Configuration.GetConnectionString("PostgresDb");
-builder.Services.AddDbContext<MapleDatabaseContext>(options => options.UseNpgsql(connectionString));
+builder.Services.AddDbContext<MapleDatabaseContext>(
+    options => options.UseNpgsql(connectionString,
+        npgsqlOptions => npgsqlOptions.ConfigureDataSource(dataSourceBuilder => dataSourceBuilder.EnableDynamicJson()))
+);
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
@@ -25,6 +29,7 @@ using (var scope = app.Services.CreateScope())
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 else
 {

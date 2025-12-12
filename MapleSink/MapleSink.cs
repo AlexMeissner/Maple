@@ -14,13 +14,33 @@ internal class MapleSink(MapleSinkOptions options) : IBatchedLogEventSink
     {
         var payload = batch
             .Where(e => e.Level >= options.LogLevel)
-            .Select(e => new LogDto(options.Guid, e.Timestamp, e.Level.ToString(), (Dictionary<string, object>)e.Properties));
-
-        if (payload.Any())
+            .Select(e => new LogDto(options.Guid, e.Timestamp, e.Level.ToString(), ConvertProperties(e.Properties)))
+            .ToList();
+        
+        if (payload.Count != 0)
         {
             await _httpClient.PostAsJsonAsync(endpoint, payload);
         }
     }
 
     public Task OnEmptyBatchAsync() => Task.CompletedTask;
+
+    private static Dictionary<string, object> ConvertProperties(IReadOnlyDictionary<string, LogEventPropertyValue> properties)
+    {
+        var dictionary = new Dictionary<string, object>();
+
+        foreach (var property in properties)
+        {
+            if (property.Value is ScalarValue scalar && scalar.Value is { } value)
+            {
+                dictionary[property.Key] = value;
+            }
+            else
+            {
+                dictionary[property.Key] = property.Value.ToString();
+            }
+        }
+
+        return dictionary;
+    }
 }
