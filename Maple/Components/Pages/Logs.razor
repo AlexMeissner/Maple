@@ -1,5 +1,9 @@
 ﻿@page "/logs"
 
+@inject IJSRuntime JSRuntime
+
+@implements IDisposable
+
 <PageTitle>Logs</PageTitle>
 
 <div>
@@ -11,8 +15,49 @@
         </select>
         <input class="form-control filter" type="text" placeholder="Filter..." />
     </div>
+    <div>
+        <table class="table">
+            <tbody id="sortable-table">
+                @for (int i = 0; i < 10; i++)
+                {
+                    <tr>
+                        <td>
+                            <span class="bi bi-grip-vertical" aria-hidden="true"></span>
+                        </td>
+                        <td>
+                            <span>Property #@i</span>
+                        </td>
+                        <td>
+                            <input type="checkbox" />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
 </div>
 
 @code {
+    private DotNetObjectReference<Logs>? _selfReference;
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _selfReference = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("initializeSortable", "sortable-table", ".bi-grip-vertical", "sortable-ghost", _selfReference);
+        }
+    }
+
+    public void Dispose() => _selfReference?.Dispose();
+
+    [JSInvokable]
+    public void OnMoveItem(int oldIndex, int newIndex)
+    {
+        //var item = _releaseNotes.Entries[oldIndex];
+        //_releaseNotes.Entries.RemoveAt(oldIndex);
+        //_releaseNotes.Entries.Insert(newIndex, item);
+
+        StateHasChanged();
+    }
 }
