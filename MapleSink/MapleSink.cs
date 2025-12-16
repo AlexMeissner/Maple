@@ -14,7 +14,7 @@ internal class MapleSink(MapleSinkOptions options) : IBatchedLogEventSink
     {
         var payload = batch
             .Where(e => e.Level >= options.LogLevel)
-            .Select(e => new LogDto(options.Guid, e.Timestamp, e.Level.ToString(), ConvertProperties(e.Properties)))
+            .Select(e => new LogCreationDto(options.Guid, e.Timestamp, e.Level.ToString(), e.RenderMessage(), ConvertProperties(e.Properties)))
             .ToList();
         
         if (payload.Count != 0)

@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System.Xml;
 
 namespace Maple.Database;
 
@@ -12,4 +13,12 @@ public class MapleDatabaseContext(DbContextOptions<MapleDatabaseContext> options
             .Property(b => b.Properties)
             .HasColumnType("jsonb");
     }
+
+    // ToDo. Understand Indices
+    //protected override void OnModelCreating(ModelBuilder modelBuilder)
+    //{
+    //    modelBuilder.Entity<MyEntity>()
+    //        .HasIndex(e => e.Guid)
+    //        .IsUnique(false); // It should not be unique, as you expect duplicates
+    //}
 }

@@ -1,6 +1,10 @@
 ﻿@page "/logs"
 
+@using DataTransfer
+@using Maple.Services
+
 @inject IJSRuntime JSRuntime
+@inject ILogEntryRepository LogEntryRepository
 
 @implements IDisposable
 
@@ -9,26 +13,59 @@
 <div>
     <div class="input-group mb-3">
         <select class="form-select">
-            <option value="All">All</option>
-            <option value="ProjectB">Project A</option>
-            <option value="ProjectB">Project B</option>
+            @foreach (var project in _projects)
+            {
+                <option value="@project.Guid">@project.Name</option>
+            }
         </select>
         <input class="form-control filter" type="text" placeholder="Filter..." />
     </div>
-    <div>
-        <table class="table">
+    <div class="content">
+        <table class="table properties">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Display Properties</th>
+                    <th></th>
+                </tr>
+            </thead>
             <tbody id="sortable-table">
-                @for (int i = 0; i < 10; i++)
+                @foreach (var logProperties in _logProperties)
                 {
                     <tr>
                         <td>
                             <span class="bi bi-grip-vertical" aria-hidden="true"></span>
                         </td>
                         <td>
-                            <span>Property #@i</span>
+                            <span>@logProperties.Name</span>
                         </td>
                         <td>
-                            <input type="checkbox" />
+                            <input type="checkbox" @bind="logProperties.IsActive" />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <table class="table log-entries">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Level</th>
+                    <th>Message</th>
+                </tr>
+            </thead>
+            <tbody id="sortable-table">
+                @foreach (var logEntry in _logEntries)
+                {
+                    <tr>
+                        <td>
+                            <span>@logEntry.Timestamp</span>
+                        </td>
+                        <td>
+                            <span>@logEntry.Level</span>
+                        </td>
+                        <td>
+                            <span>@logEntry.Message</span>
                         </td>
                     </tr>
                 }
@@ -38,7 +75,23 @@
 </div>
 
 @code {
+    internal class LogProperties
+    {
+        public required string Name { get; set; }
+        public bool IsActive { get; set; }
+    }
+
+    internal class Project
+    {
+        public Guid? Guid { get; set; }
+        public required string Name { get; set; }
+    }
+
     private DotNetObjectReference<Logs>? _selfReference;
+
+    private List<Project> _projects = [];
+    private List<LogEntryDto> _logEntries = [];
+    private List<LogProperties> _logProperties = [];
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -46,6 +99,8 @@
         {
             _selfReference = DotNetObjectReference.Create(this);
             await JSRuntime.InvokeVoidAsync("initializeSortable", "sortable-table", ".bi-grip-vertical", "sortable-ghost", _selfReference);
+
+            Update();
         }
     }
 
@@ -54,9 +109,37 @@
     [JSInvokable]
     public void OnMoveItem(int oldIndex, int newIndex)
     {
-        //var item = _releaseNotes.Entries[oldIndex];
-        //_releaseNotes.Entries.RemoveAt(oldIndex);
-        //_releaseNotes.Entries.Insert(newIndex, item);
+        var item = _logProperties[oldIndex];
+        _logProperties.RemoveAt(oldIndex);
+        _logProperties.Insert(newIndex, item);
+
+        // ToDo: Change log table as well
+
+        StateHasChanged();
+    }
+
+    // Update log table when checkbox is changed
+
+    private void Update()
+    {
+        _projects = LogEntryRepository.GetProjects().Select(guid => new Project() { Guid = guid, Name = guid.ToString() }).ToList();
+        _projects.Insert(0, new Project() { Guid = null, Name = "All" });
+
+        _logEntries = LogEntryRepository.Get(null, null).ToList();
+
+        _logProperties =
+        [
+            new() { Name = "Timestamp", IsActive = true },
+            new() { Name = "Level", IsActive = true },
+            new() { Name = "Message", IsActive = true }
+        ];
+
+        _logProperties.AddRange(_logEntries
+            .SelectMany(e => e.Properties.Keys)
+            .Select(e => new LogProperties() { Name = e, IsActive = false })
+            .OrderByDescending(e => e.IsActive)
+            .ThenBy(e => e.Name)
+        );
 
         StateHasChanged();
     }

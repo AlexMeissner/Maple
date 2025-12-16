@@ -5,12 +5,13 @@ using Microsoft.AspNetCore.Mvc;
 namespace Maple.Controller;
 
 [ApiController]
+[Route("/log-entires")]
 public class LogController(MapleDatabaseContext dbContext) : ControllerBase
 {
     private readonly MapleDatabaseContext _dbContext = dbContext;
 
-    [HttpPost("/logs")]
-    public async Task<IActionResult> PostLogs(List<LogDto> logs)
+    [HttpPost]
+    public async Task<IActionResult> PostLogs(List<LogCreationDto> logs)
     {
         if (logs.Count == 0)
         {
@@ -19,8 +20,10 @@ public class LogController(MapleDatabaseContext dbContext) : ControllerBase
 
         var entry = logs.Select(l => new LogEntry
         {
-            Timestamp = l.TimeStamp.UtcDateTime,
+            Guid = l.Guid,
+            Timestamp = l.Timestamp.UtcDateTime,
             Level = l.Level,
+            Message = l.Message,
             Properties = l.Properties
         }).ToList();
 

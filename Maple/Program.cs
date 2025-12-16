@@ -1,5 +1,6 @@
 using Maple.Components;
 using Maple.Database;
+using Maple.Services;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
@@ -17,6 +18,8 @@ builder.Services.AddDbContext<MapleDatabaseContext>(
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+
+builder.Services.AddScoped<ILogEntryRepository, LogEntryRepository>();
 
 var app = builder.Build();
 
