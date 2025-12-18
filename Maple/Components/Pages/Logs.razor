@@ -2,6 +2,7 @@
 
 @using DataTransfer
 @using Maple.Services
+@using System.Globalization
 
 @inject IJSRuntime JSRuntime
 @inject ILogEntryRepository LogEntryRepository
@@ -12,65 +13,65 @@
 
 <div>
     <div class="input-group mb-3">
-        <select class="form-select">
+        <select class="form-select" @onchange="OnProjectChanged">
             @foreach (var project in _projects)
             {
                 <option value="@project.Guid">@project.Name</option>
             }
         </select>
-        <input class="form-control filter" type="text" placeholder="Filter..." />
+        <input class="form-control filter" type="text" placeholder="Filter..." @oninput="OnFilterChanged" />
     </div>
     <div class="content">
-        <table class="table properties">
-            <thead>
-                <tr>
-                    <th></th>
-                    <th>Display Properties</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody id="sortable-table">
-                @foreach (var logProperties in _logProperties)
-                {
+        <div class="properties">
+            <table class="table ">
+                <thead>
                     <tr>
-                        <td>
-                            <span class="bi bi-grip-vertical" aria-hidden="true"></span>
-                        </td>
-                        <td>
-                            <span>@logProperties.Name</span>
-                        </td>
-                        <td>
-                            <input type="checkbox" @bind="logProperties.IsActive" />
-                        </td>
+                        <th></th>
+                        <th>Property</th>
+                        <th></th>
                     </tr>
-                }
-            </tbody>
-        </table>
-        <table class="table log-entries">
-            <thead>
-                <tr>
-                    <th>Timestamp</th>
-                    <th>Level</th>
-                    <th>Message</th>
-                </tr>
-            </thead>
-            <tbody id="sortable-table">
-                @foreach (var logEntry in _logEntries)
-                {
+                </thead>
+                <tbody id="sortable-table">
+                    @foreach (var logProperties in _logProperties)
+                    {
+                        <tr>
+                            <td>
+                                <span class="bi bi-grip-vertical" aria-hidden="true"></span>
+                            </td>
+                            <td>
+                                <span>@logProperties.Name</span>
+                            </td>
+                            <td>
+                                <input type="checkbox" @bind="logProperties.IsActive" @bind:after="OnPropertyChanged" />
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="log-entires">
+            <table class="table">
+                <thead>
                     <tr>
-                        <td>
-                            <span>@logEntry.Timestamp</span>
-                        </td>
-                        <td>
-                            <span>@logEntry.Level</span>
-                        </td>
-                        <td>
-                            <span>@logEntry.Message</span>
-                        </td>
+                        @foreach (var propertyName in ActiveProperties)
+                        {
+                            <th>@propertyName</th>
+                        }
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody id="sortable-table">
+                    @foreach (var logEntry in _logEntries)
+                    {
+                        <tr>
+                            @foreach (var propertyName in ActiveProperties)
+                            {
+                                <td>@GetValue(logEntry, propertyName)</td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -89,9 +90,14 @@
 
     private DotNetObjectReference<Logs>? _selfReference;
 
+    private Guid? _selectedProject;
+    private string? _filter;
+
     private List<Project> _projects = [];
     private List<LogEntryDto> _logEntries = [];
     private List<LogProperties> _logProperties = [];
+
+    private IEnumerable<string> ActiveProperties => _logProperties.Where(p => p.IsActive).Select(p => p.Name);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -100,7 +106,12 @@
             _selfReference = DotNetObjectReference.Create(this);
             await JSRuntime.InvokeVoidAsync("initializeSortable", "sortable-table", ".bi-grip-vertical", "sortable-ghost", _selfReference);
 
-            Update();
+            _projects = LogEntryRepository.GetProjects()
+                .Select(g => new Project { Guid = g, Name = g.ToString() })
+                .Prepend(new Project { Guid = null, Name = "All" })
+                .ToList();
+
+            await RefreshAsync();
         }
     }
 
@@ -118,29 +129,62 @@
         StateHasChanged();
     }
 
-    // Update log table when checkbox is changed
-
-    private void Update()
+    private string? GetValue(LogEntryDto log, string column)
     {
-        _projects = LogEntryRepository.GetProjects().Select(guid => new Project() { Guid = guid, Name = guid.ToString() }).ToList();
-        _projects.Insert(0, new Project() { Guid = null, Name = "All" });
+        return column switch
+        {
+            "Timestamp" => log.Timestamp.ToString(new CultureInfo("de-DE")),
+            "Level" => log.Level,
+            "Message" => log.Message,
+            _ => log.Properties.TryGetValue(column, out var v) ? v?.ToString() : null
+        };
+    }
 
-        _logEntries = LogEntryRepository.Get(null, null).ToList();
+    private void SyncProperties()
+    {
+        var discovered = new HashSet<string>
+        {
+            "Timestamp", "Level", "Message"
+        };
 
-        _logProperties =
-        [
-            new() { Name = "Timestamp", IsActive = true },
-            new() { Name = "Level", IsActive = true },
-            new() { Name = "Message", IsActive = true }
-        ];
+        foreach (var log in _logEntries)
+        {
+            foreach (var key in log.Properties.Keys)
+                discovered.Add(key);
+        }
 
-        _logProperties.AddRange(_logEntries
-            .SelectMany(e => e.Properties.Keys)
-            .Select(e => new LogProperties() { Name = e, IsActive = false })
-            .OrderByDescending(e => e.IsActive)
-            .ThenBy(e => e.Name)
-        );
+        var map = _logProperties.ToDictionary(p => p.Name);
 
+        _logProperties = discovered
+            .Select(name =>
+                map.TryGetValue(name, out var existing)
+                    ? existing
+                    : new LogProperties { Name = name, IsActive = name is "Timestamp" or "Level" or "Message" })
+            .Where(p => discovered.Contains(p.Name))
+            .ToList();
+    }
+
+    private async Task RefreshAsync()
+    {
+        _logEntries = LogEntryRepository.Get(_selectedProject, null, _filter).ToList();
+        SyncProperties();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnProjectChanged(ChangeEventArgs e)
+    {
+        _selectedProject = Guid.TryParse(e.Value?.ToString(), out var g) ? g : null;
+        await RefreshAsync();
+    }
+
+    private async Task OnFilterChanged(ChangeEventArgs e)
+    {
+        _filter = e.Value?.ToString();
+        await RefreshAsync();
+    }
+
+    private void OnPropertyChanged()
+    {
         StateHasChanged();
     }
 }

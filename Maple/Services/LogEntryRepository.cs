@@ -6,7 +6,7 @@ namespace Maple.Services;
 
 internal interface ILogEntryRepository
 {
-    IEnumerable<LogEntryDto> Get(string? level, string? filter);
+    IEnumerable<LogEntryDto> Get(Guid? projectGuid, string? level, string? filter);
     IEnumerable<Guid> GetProjects();
 }
 
@@ -14,9 +14,14 @@ internal class LogEntryRepository(MapleDatabaseContext dbContext) : ILogEntryRep
 {
     private readonly MapleDatabaseContext _dbContext = dbContext;
 
-    public IEnumerable<LogEntryDto> Get(string? level, string? filter)
+    public IEnumerable<LogEntryDto> Get(Guid? projectGuid, string? level, string? filter)
     {
         var query = _dbContext.LogEntries.AsNoTracking();
+
+        if (projectGuid.HasValue)
+        {
+            query = query.Where(x => x.Guid == projectGuid.Value);
+        }
 
         if (!string.IsNullOrWhiteSpace(level))
         {
@@ -25,7 +30,9 @@ internal class LogEntryRepository(MapleDatabaseContext dbContext) : ILogEntryRep
 
         if (!string.IsNullOrWhiteSpace(filter))
         {
-            query = query.Where(l => l.Properties != null && EF.Functions.ILike(l.Properties.ToString() ?? "", $"%{filter}"));
+            query = query.Where(l =>
+               EF.Functions.ILike(l.Message, $"%{filter}%") ||
+               EF.Functions.ILike(l.Properties.ToString()!, $"%{filter}%"));
         }
 
         var logs = query
