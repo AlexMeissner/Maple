@@ -2,7 +2,6 @@
 
 @using DataTransfer
 @using Maple.Services
-@using System.Globalization
 
 @inject IJSRuntime JSRuntime
 @inject ILogEntryRepository LogEntryRepository
@@ -42,7 +41,7 @@
                                 <span>@logProperties.Name</span>
                             </td>
                             <td>
-                                <input type="checkbox" @bind="logProperties.IsActive" @bind:after="OnPropertyChanged" />
+                                <input type="checkbox" @bind="logProperties.IsActive" @bind:after="StateHasChanged" />
                             </td>
                         </tr>
                     }
@@ -76,7 +75,7 @@
 </div>
 
 @code {
-    internal class LogProperties
+    internal class LogProperty
     {
         public required string Name { get; set; }
         public bool IsActive { get; set; }
@@ -95,7 +94,12 @@
 
     private List<Project> _projects = [];
     private List<LogEntryDto> _logEntries = [];
-    private List<LogProperties> _logProperties = [];
+    private List<LogProperty> _logProperties =
+    [
+        new LogProperty() { Name="Timestamp", IsActive = true},
+        new LogProperty() { Name="Level", IsActive = true},
+        new LogProperty() { Name="Message", IsActive = true},
+    ];
 
     private IEnumerable<string> ActiveProperties => _logProperties.Where(p => p.IsActive).Select(p => p.Name);
 
@@ -111,7 +115,7 @@
                 .Prepend(new Project { Guid = null, Name = "All" })
                 .ToList();
 
-            await RefreshAsync();
+            Refresh();
         }
     }
 
@@ -124,21 +128,16 @@
         _logProperties.RemoveAt(oldIndex);
         _logProperties.Insert(newIndex, item);
 
-        // ToDo: Change log table as well
-
         StateHasChanged();
     }
 
-    private string? GetValue(LogEntryDto log, string column)
+    private static string GetValue(LogEntryDto logEntry, string column) => column switch
     {
-        return column switch
-        {
-            "Timestamp" => log.Timestamp.ToString(new CultureInfo("de-DE")),
-            "Level" => log.Level,
-            "Message" => log.Message,
-            _ => log.Properties.TryGetValue(column, out var v) ? v?.ToString() : null
-        };
-    }
+        "Timestamp" => logEntry.Timestamp.ToString("d-MM-yyyy hh:mm:ss"),
+        "Level" => logEntry.Level,
+        "Message" => logEntry.Message,
+        _ => logEntry.Properties.TryGetValue(column, out var value) ? value.ToString() ?? "Could not retrieve the value" : "No value exists"
+    };
 
     private void SyncProperties()
     {
@@ -147,44 +146,41 @@
             "Timestamp", "Level", "Message"
         };
 
-        foreach (var log in _logEntries)
+        foreach (var logEntry in _logEntries)
         {
-            foreach (var key in log.Properties.Keys)
+            foreach (var key in logEntry.Properties.Keys)
+            {
                 discovered.Add(key);
+            }
         }
 
-        var map = _logProperties.ToDictionary(p => p.Name);
+        _logProperties.RemoveAll(p => !discovered.Contains(p.Name));
 
-        _logProperties = discovered
-            .Select(name =>
-                map.TryGetValue(name, out var existing)
-                    ? existing
-                    : new LogProperties { Name = name, IsActive = name is "Timestamp" or "Level" or "Message" })
-            .Where(p => discovered.Contains(p.Name))
-            .ToList();
+        foreach (var property in discovered)
+        {
+            if (!_logProperties.Any(p => p.Name == property))
+            {
+                _logProperties.Add(new LogProperty() { Name = property, IsActive = false });
+            }
+        }
     }
 
-    private async Task RefreshAsync()
+    private void Refresh()
     {
         _logEntries = LogEntryRepository.Get(_selectedProject, null, _filter).ToList();
         SyncProperties();
-        await InvokeAsync(StateHasChanged);
+        StateHasChanged();
     }
 
     private async Task OnProjectChanged(ChangeEventArgs e)
     {
-        _selectedProject = Guid.TryParse(e.Value?.ToString(), out var g) ? g : null;
-        await RefreshAsync();
+        _selectedProject = Guid.TryParse(e.Value?.ToString(), out var guid) ? guid : null;
+        Refresh();
     }
 
     private async Task OnFilterChanged(ChangeEventArgs e)
     {
         _filter = e.Value?.ToString();
-        await RefreshAsync();
-    }
-
-    private void OnPropertyChanged()
-    {
-        StateHasChanged();
+        Refresh();
     }
 }
