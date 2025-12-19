@@ -2,7 +2,7 @@
 
 namespace Maple.Database;
 
-internal class MapleDatabaseContext(DbContextOptions<MapleDatabaseContext> options) : DbContext(options)
+public class MapleDatabaseContext(DbContextOptions<MapleDatabaseContext> options) : DbContext(options)
 {
     public DbSet<LogEntry> LogEntries { get; set; }
     public DbSet<Project> Projects { get; set; }

@@ -1,6 +1,6 @@
 ﻿namespace Maple.Database;
 
-internal class LogEntry
+public class LogEntry
 {
     public int Id { get; set; }
     public Guid Guid { get; set; }

@@ -127,10 +127,10 @@
 
     private static string GetValue(LogEntryDto logEntry, string column) => column switch
     {
-        "Timestamp" => logEntry.Timestamp.ToString("d-MM-yyyy hh:mm:ss"),
+        "Timestamp" => logEntry.Timestamp.ToString("d.MM.yyyy hh:mm:ss"),
         "Level" => logEntry.Level,
         "Message" => logEntry.Message,
-        _ => logEntry.Properties.TryGetValue(column, out var value) ? value.ToString() ?? "Could not retrieve the value" : "No value exists"
+        _ => logEntry.Properties.TryGetValue(column, out var value) ? value.ToString() ?? "Could not retrieve the value" : ""
     };
 
     private void SyncProperties()

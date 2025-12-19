@@ -2,7 +2,7 @@
 
 namespace Maple.Database;
 
-internal class Project
+public class Project
 {
     [Key]
     public Guid Guid { get; set; }

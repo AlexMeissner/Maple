@@ -2,13 +2,14 @@
 using Serilog.Events;
 using Serilog.Sinks.PeriodicBatching;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace MapleSink;
 
 internal class MapleSink(MapleSinkOptions options) : IBatchedLogEventSink
 {
     private readonly HttpClient _httpClient = new();
-    private readonly string endpoint = $"{options.Host}/logs";
+    private readonly string endpoint = $"{options.Host}/log-entires";
 
     public async Task EmitBatchAsync(IEnumerable<LogEvent> batch)
     {
@@ -16,7 +17,7 @@ internal class MapleSink(MapleSinkOptions options) : IBatchedLogEventSink
             .Where(e => e.Level >= options.LogLevel)
             .Select(e => new LogCreationDto(options.Guid, e.Timestamp, e.Level.ToString(), e.RenderMessage(), ConvertProperties(e.Properties)))
             .ToList();
-        
+
         if (payload.Count != 0)
         {
             await _httpClient.PostAsJsonAsync(endpoint, payload);
