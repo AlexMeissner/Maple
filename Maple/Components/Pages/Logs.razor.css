@@ -2,9 +2,6 @@
     width: 60%;
 }
 
-.table {
-}
-
 .bi {
     display: inline-block;
     position: relative;
@@ -34,4 +31,5 @@
 
 .log-entires {
     width: 80%;
+    margin-left: 20px;
 }

@@ -6,7 +6,7 @@ namespace Maple.Controller;
 
 [ApiController]
 [Route("/log-entires")]
-public class LogController(MapleDatabaseContext dbContext) : ControllerBase
+internal class LogController(MapleDatabaseContext dbContext) : ControllerBase
 {
     private readonly MapleDatabaseContext _dbContext = dbContext;
 

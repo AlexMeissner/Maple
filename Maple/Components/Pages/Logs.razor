@@ -1,6 +1,7 @@
 ﻿@page "/logs"
 
 @using DataTransfer
+@using Maple.Database
 @using Maple.Services
 
 @inject IJSRuntime JSRuntime
@@ -81,15 +82,9 @@
         public bool IsActive { get; set; }
     }
 
-    internal class Project
-    {
-        public Guid? Guid { get; set; }
-        public required string Name { get; set; }
-    }
-
     private DotNetObjectReference<Logs>? _selfReference;
 
-    private Guid? _selectedProject;
+    private Guid _selectedProject = Guid.Empty;
     private string? _filter;
 
     private List<Project> _projects = [];
@@ -110,9 +105,8 @@
             _selfReference = DotNetObjectReference.Create(this);
             await JSRuntime.InvokeVoidAsync("initializeSortable", "sortable-table", ".bi-grip-vertical", "sortable-ghost", _selfReference);
 
-            _projects = LogEntryRepository.GetProjects()
-                .Select(g => new Project { Guid = g, Name = g.ToString() })
-                .Prepend(new Project { Guid = null, Name = "All" })
+            _projects = LogEntryRepository.GetProjectsFromLogEntries()
+                .Prepend(new Project { Guid = Guid.Empty, Name = "All" })
                 .ToList();
 
             Refresh();
@@ -174,7 +168,7 @@
 
     private async Task OnProjectChanged(ChangeEventArgs e)
     {
-        _selectedProject = Guid.TryParse(e.Value?.ToString(), out var guid) ? guid : null;
+        _selectedProject = Guid.TryParse(e.Value?.ToString(), out var guid) ? guid : Guid.Empty;
         Refresh();
     }
 

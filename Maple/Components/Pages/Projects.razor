@@ -1,0 +1,42 @@
+﻿@page "/projects"
+
+@using Maple.Database
+@using Maple.Services
+
+@inject ILogEntryRepository LogEntryRepository
+
+<PageTitle>Projects</PageTitle>
+
+<ul class="list-group list-group-flush">
+    @foreach (var project in _projects)
+    {
+        <li>
+            <div class="input-group mb-3">
+                <div class="input-group-prepend">
+                    <span class="input-group-text" id="basic-addon3">@project.Guid</span>
+                </div>
+                <input type="text" class="form-control" id="basic-url" aria-describedby="basic-addon3" @bind="project.Name">
+            </div>
+        </li>
+    }
+</ul>
+
+<button type="button" class="btn btn-success" @onclick="OnSave">Save</button>
+
+@code {
+    private List<Project> _projects = [];
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _projects = LogEntryRepository.GetProjects().ToList();
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnSave()
+    {
+        await LogEntryRepository.UpdateProjectAliases(_projects);
+    }
+}

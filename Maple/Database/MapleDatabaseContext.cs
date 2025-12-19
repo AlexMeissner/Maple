@@ -1,11 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System.Xml;
 
 namespace Maple.Database;
 
-public class MapleDatabaseContext(DbContextOptions<MapleDatabaseContext> options) : DbContext(options)
+internal class MapleDatabaseContext(DbContextOptions<MapleDatabaseContext> options) : DbContext(options)
 {
     public DbSet<LogEntry> LogEntries { get; set; }
+    public DbSet<Project> Projects { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
